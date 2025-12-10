@@ -1,12 +1,18 @@
-from datetime import date 
+# src/mascotas.py
+from datetime import date
+from .clientes import Cliente 
 
 class Mascota:
-    def __init__(self, nombre: str, especie: str, raza: str, fecha_nacimiento: date):
+    """
+    Representa a una mascota. Ahora guarda una referencia directa al objeto Cliente dueño (self.cliente).
+    """
+    def __init__(self, nombre: str, especie: str, raza: str, fecha_nacimiento: date, cliente: Cliente): # <-- CLAVE: Acepta el objeto Cliente
         self.nombre = nombre
         self.especie = especie
         self.raza = raza
         self.fecha_nacimiento = fecha_nacimiento
-        # Creamos un historial medico de cad mascota donde se recogeran diferetes atributos
+        self.cliente = cliente # <-- Guarda el objeto Cliente completo
+        
         self.historial_medico = {
             "vacunas": [],
             "peso": [],
@@ -15,4 +21,4 @@ class Mascota:
         }
 
     def __str__(self):
-        return f"Mascota: {self.nombre} (Especie: {self.especie})"
+        return f"Mascota: {self.nombre} (Dueño: {self.cliente.nombre})"

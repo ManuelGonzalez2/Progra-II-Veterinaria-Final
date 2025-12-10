@@ -1,3 +1,10 @@
+#Este script tiene la función de automatizar la creación del dataset inicial.
+# Sustituye la necesidad de introducir datos manualmente en una hoja de cálculo (Excel/CSV). 
+# Utiliza la librería 'random' para generar registros aleatorios de Clientes y Mascotas.
+# Emplea la librería 'pandas' para convertir la estructura de datos y guardarla de forma masiva.
+# Crea el fichero 'bbdd_veterinaria.csv' que sirve como la Base de Datos Prototipo.
+
+# El módulo principal del sistema (Veterinaria) lee este CSV para cargar los datos en memoria al iniciar la aplicación.
 import pandas as pd
 import random
 

@@ -1,7 +1,7 @@
 import sys
 import os
-
-# Truco para que Python encuentre la carpeta 'src'
+# La siguiente linea de codigo es un ajuste de ruta para que pueda encontrar la carpeta src
+# Es la solución de emergencia para que los ficheros de pages reconozcan al motor.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import streamlit as st
@@ -9,13 +9,14 @@ from src.veterinaria import Veterinaria
 from src.utils import Utils
 from datetime import date
 
-# --- Parche de Seguridad ---
+# Aqui utilizamos el patron de singleton o memoria persistente, streamlit lo que hace es que cada vez que 
+# un usuario hace clic, este se reinicia. Utilizamos la funcion st.session_state para que le diga a streamlit
+# todo lo que pongamos se quede en su memoria.
 if "mi_clinica" not in st.session_state:
-    from src.veterinaria import Veterinaria
     st.session_state["mi_clinica"] = Veterinaria()
-# ---------------------------
 
-# Validación de Login
+
+# Seguridad: Si no está logueado, detener la ejecución
 if "login_correcto" not in st.session_state or not st.session_state["login_correcto"]:
     st.warning("Debes iniciar sesión para acceder.")
     st.stop()
@@ -47,9 +48,10 @@ with st.form("registro_completo"):
     submitted = st.form_submit_button("Registrar Todo")
 
     if submitted:
-        # 1. Validaciones
+        # Aqui ponemos las validaciones
         if not nombre or not email or not nombre_mascota:
              st.error("❌ Faltan campos obligatorios (Nombre, Email o Nombre Mascota).")
+        #Aqui ponemos la funcion de utils de que el mail tiene que tener @ y .
         elif not Utils.validar_email(email):
             st.error("❌ El email no es válido.")
         else:

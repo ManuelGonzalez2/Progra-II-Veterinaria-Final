@@ -13,5 +13,8 @@ class Cita:
         self.veterinario = veterinario
         self.mascota = mascota
         
-        # Genera un ID único basado en fecha, hora y el nombre de la mascota
-        self.id_cita = f"{fecha}_{hora}_{mascota.nombre}"
+        # El ID de la mascota es crucial para la BBDD
+        self.id_mascota = mascota.id 
+        
+        # Genera un ID único basado en fecha, hora y el ID de la mascota
+        self.id_cita = f"{fecha}_{hora}_{self.id_mascota}"

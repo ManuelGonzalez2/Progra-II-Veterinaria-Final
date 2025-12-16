@@ -1,7 +1,7 @@
-from datetime import date 
-import uuid # Necesitamos esta librería para generar IDs únicos
-from .db_connection import get_connection # Importamos la conexión a SQLite
-import sqlite3 # Necesitamos el manejador de errores de SQLite
+import uuid
+import sqlite3
+from datetime import date, datetime
+from .db_connection import get_connection
 
 class Cliente:
     def __init__(self, nombre: str, telefono: str, email: str, id_cliente: str = None):
@@ -16,66 +16,116 @@ class Cliente:
         self.nombre = nombre
         self.telefono = telefono
         self.email = email
-        self.mascotas = [] # Lista de objetos Mascota (se cargará al iniciar)
+        self.mascotas = [] # Lista de objetos Mascota
 
     def __str__(self):
-        # Incluimos el ID en la representación
         return f"Cliente ID: {self.id[:8]}... | Nombre: {self.nombre} | Email: {self.email}"
 
 
 # --- FUNCIONES DE PERSISTENCIA (CRUD) ---
 
-def insertar_cliente(cliente: Cliente):
+def registrar_cliente_db(cliente: Cliente):
     """Inserta un nuevo objeto Cliente en la tabla 'clientes' de SQLite."""
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
-        # La instrucción SQL INSERT con todos los campos
+        # Instrucción SQL ajustada a los atributos reales de la clase
         cursor.execute("""
-            INSERT INTO clientes (id_cliente, nombre, apellido, email, telefono)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO clientes (id_cliente, nombre, email, telefono)
+            VALUES (?, ?, ?, ?)
         """, (
             cliente.id, 
             cliente.nombre, 
-            "", # Asumo que el apellido no lo tienes en el init, por lo que ponemos cadena vacía.
             cliente.email, 
             cliente.telefono
         ))
         
-        conn.commit() # Guardamos los cambios
+        conn.commit()
         return True
     
     except sqlite3.IntegrityError:
-        # Ocurre si el ID o el EMAIL ya existen (violación de UNIQUE)
         print(f"Error: El cliente con ID {cliente.id} o email {cliente.email} ya existe.")
         return False
-        
     except Exception as e:
         print(f"Error al insertar cliente: {e}")
         return False
-        
     finally:
-        conn.close() # Siempre cerramos la conexión
-        
+        conn.close()
+
 def eliminar_cliente_db(id_cliente):
     """Elimina un cliente de la BBDD por ID."""
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
-        # La tabla mascotas tiene ON DELETE CASCADE, por lo que las mascotas se eliminan automáticamente.
+        # Gracias al ON DELETE CASCADE, esto borrará también mascotas y citas
         cursor.execute("DELETE FROM clientes WHERE id_cliente = ?", (id_cliente,))
         
         if cursor.rowcount > 0:
             conn.commit()
-            conn.close()
-            return True # Eliminación exitosa
-        
-        conn.close()
-        return False # Cliente no encontrado
+            return True
+        return False
         
     except Exception as e:
         print(f"Error al eliminar cliente de DB: {e}")
-        conn.close()
         return False
+    finally:
+        conn.close()
+
+def cargar_clientes_db():
+    """
+    Recupera todos los clientes de la BBDD y también sus mascotas asociadas.
+    Devuelve una lista de objetos Cliente.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    lista_clientes = []
+    
+    try:
+        # 1. Seleccionar todos los clientes
+        cursor.execute("SELECT id_cliente, nombre, email, telefono FROM clientes")
+        rows = cursor.fetchall()
+        
+        # Importación LOCAL para evitar el error de 'Importación Circular'
+        # Esto es un truco necesario porque mascota.py importa cliente.py
+        from .mascotas import Mascota 
+
+        for row in rows:
+            id_cli, nombre, email, telefono = row
+            cliente_obj = Cliente(nombre, telefono, email, id_cli)
+            
+            # 2. Para cada cliente, buscamos sus mascotas en la BBDD
+            # Hacemos una segunda consulta filtrando por cliente_id
+            cursor.execute("""
+                SELECT id_mascota, nombre, especie, raza, fecha_nacimiento 
+                FROM mascotas WHERE cliente_id = ?
+            """, (id_cli,))
+            
+            mascotas_rows = cursor.fetchall()
+            
+            for m_row in mascotas_rows:
+                id_masc, m_nom, m_esp, m_raza, m_fecha_str = m_row
+                
+                # Convertir la fecha de string (SQLite) a objeto date (Python)
+                try:
+                    fecha_nac = datetime.strptime(m_fecha_str, '%Y-%m-%d').date()
+                except ValueError:
+                    fecha_nac = date.today() # Fallback si la fecha está mal
+                
+                # Creamos el objeto Mascota y lo añadimos a la lista del cliente
+                mascota_obj = Mascota(m_nom, m_esp, m_raza, fecha_nac, id_cli, id_masc)
+                
+                # Cargar historial médico (Opcional: JSON parse si lo implementaste)
+                # mascota_obj.historial_medico = ... 
+                
+                cliente_obj.mascotas.append(mascota_obj)
+            
+            lista_clientes.append(cliente_obj)
+            
+    except Exception as e:
+        print(f"Error cargando clientes: {e}")
+    finally:
+        conn.close()
+        
+    return lista_clientes

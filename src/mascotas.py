@@ -1,13 +1,11 @@
-# src/mascotas.py
-from datetime import date
-from .clientes import Cliente 
-import uuid # Para generar el ID de la mascota
-from .db_connection import get_connection # Para la persistencia
+import uuid
 import sqlite3
+from datetime import date
+from .db_connection import get_connection
 
 class Mascota:
     """
-    Representa a una mascota, guardando solo el ID del cliente dueño (clave foránea).
+    Representa a una mascota, guardando el ID del cliente dueño (clave foránea).
     """
     def __init__(self, nombre: str, especie: str, raza: str, fecha_nacimiento: date, 
                  cliente_id: str, id_mascota: str = None):
@@ -24,12 +22,11 @@ class Mascota:
         self.fecha_nacimiento = fecha_nacimiento
         
         # 2. Referencia al Dueño (Clave Foránea)
-        # Guardamos SOLO el ID del cliente, no el objeto completo.
         self.cliente_id = cliente_id 
         
-        # El historial médico es una estructura compleja. 
-        # Por ahora, se mantiene en el objeto. Si usáramos BBDD, 
-        # habría que guardarlo en una tabla separada.
+        # Historial médico (diccionario en memoria)
+        # Nota: En una BBDD real compleja, esto sería otra tabla 'historial'.
+        # Aquí lo mantenemos en memoria o se podría guardar como JSON text en SQLite.
         self.historial_medico = {
             "vacunas": [],
             "peso": [],
@@ -38,30 +35,30 @@ class Mascota:
         }
 
     def __str__(self):
-        # Ahora mostramos el ID del cliente en lugar del nombre del objeto Cliente
         return f"Mascota: {self.nombre} (Dueño ID: {self.cliente_id[:8]}...)"
 
 
 # --- FUNCIONES DE PERSISTENCIA (CRUD) ---
 
-def insertar_mascota(mascota: Mascota):
+def registrar_mascota_db(mascota: Mascota):
     """Inserta un nuevo objeto Mascota en la tabla 'mascotas' de SQLite."""
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
+        # Convertimos la fecha a string para SQLite (formato YYYY-MM-DD)
+        fecha_str = str(mascota.fecha_nacimiento)
+
         # La instrucción SQL INSERT
         cursor.execute("""
-            INSERT INTO mascotas (id_mascota, nombre, especie, raza, edad, cliente_id)
+            INSERT INTO mascotas (id_mascota, nombre, especie, raza, fecha_nacimiento, cliente_id)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
             mascota.id, 
             mascota.nombre, 
             mascota.especie, 
             mascota.raza, 
-            # SQLite no tiene tipo DATE. Guardamos la fecha como texto (ISO 8601) o calculamos la edad en enteros.
-            # Asumo que tu tabla mascotas de db_connection.py usa INTEGER para 'edad', ajusta si es 'fecha_nacimiento'.
-            0, # Reemplaza esto con tu lógica de edad o fecha_nacimiento
+            fecha_str, # Guardamos la fecha como texto
             mascota.cliente_id # ¡La Clave Foránea!
         ))
         
@@ -69,8 +66,8 @@ def insertar_mascota(mascota: Mascota):
         return True
     
     except sqlite3.IntegrityError:
-        # Esto ocurre si el cliente_id no existe en la tabla de clientes (violación de clave foránea)
-        print(f"Error: El cliente con ID {mascota.cliente_id} no existe. No se pudo registrar la mascota.")
+        # Esto ocurre si el cliente_id no existe en la tabla de clientes
+        print(f"Error FK: El cliente con ID {mascota.cliente_id} no existe.")
         return False
         
     except Exception as e:

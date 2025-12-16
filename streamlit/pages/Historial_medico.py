@@ -5,19 +5,22 @@ import sys
 import os
 
 # -------------------------------------------------------------------------
-# BLOQUE DE CONFIGURACIÓN DE RUTAS (SOLUCIÓN DE IMPORTACIONES)
+# CORRECCIÓN DEFINITIVA DE RUTAS
 # -------------------------------------------------------------------------
 current_dir = os.path.dirname(os.path.abspath(__file__))
-root_path = os.path.abspath(os.path.join(current_dir, '..', '..'))
+# Ruta directa a la carpeta 'src'
+path_to_src = os.path.abspath(os.path.join(current_dir, '..', '..', 'src'))
 
-if root_path not in sys.path:
-    sys.path.append(root_path)
+if path_to_src not in sys.path:
+    sys.path.append(path_to_src)
 
 try:
-    from src.Veterinaria import Veterinaria
-    from src.Utils import Utils
+    # IMPORTACIÓN DIRECTA (Asegúrate de que el archivo es Veterinaria.py con mayúscula)
+    from veterinaria import veterinaria
+    from utils import utils
 except ImportError as e:
-    st.error(f"Error crítico de importación: {e}")
+    st.error(f"Error crítico: {e}")
+    st.write("Ruta buscada:", path_to_src)
     st.stop()
 
 # -------------------------------------------------------------------------
@@ -36,7 +39,7 @@ if "login_correcto" not in st.session_state or not st.session_state["login_corre
 st.title("🩺 Historial Médico y Tratamientos")
 veterinaria = st.session_state["mi_clinica"]
 
-# --- 1. Búsqueda de Mascotas ---
+# --- Búsqueda ---
 st.subheader("🔍 Buscar Paciente")
 
 with st.container(border=True): 
@@ -58,7 +61,6 @@ with st.container(border=True):
                     break
 
             mascota_encontrada = None
-            
             if cliente_encontrado:
                 nombre_mascota_formateado = Utils.formatear_nombre(nombre_mascota)
                 for m in cliente_encontrado.mascotas:
@@ -74,67 +76,39 @@ with st.container(border=True):
                 st.session_state["mascota_actual"] = None
                 st.error("❌ Mascota o Dueño no encontrados.")
 
-# Mostrar y Gestionar el historial 
+# --- Gestión del Historial ---
 if "mascota_actual" in st.session_state and st.session_state["mascota_actual"]:
     mascota = st.session_state["mascota_actual"]
     cliente = st.session_state["cliente_actual_historial"]
 
     st.write("---")
-    st.subheader(f"Ficha Médica de {mascota.nombre} ({mascota.especie.title()})")
+    st.subheader(f"Ficha Médica de {mascota.nombre}")
     
     tab1, tab2 = st.tabs(["📋 Historial Básico", "➕ Añadir Datos"])
 
-    with tab1: # Visualización del Historial
-        st.write("#### Datos del Dueño y Paciente")
-        
-        col_dueño, col_raza, col_nac, col_id = st.columns(4)
-        col_dueño.metric(label="Dueño", value=cliente.nombre)
-        col_raza.metric(label="Raza", value=mascota.raza.title())
-        col_nac.metric(label="Fecha Nacimiento", value=mascota.fecha_nacimiento.strftime('%d/%m/%Y'))
-        col_id.metric(label="ID Mascota", value=mascota.id[:8] + "...")
+    with tab1: 
+        st.write("#### Datos del Paciente")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Dueño", cliente.nombre)
+        c2.metric("Raza", mascota.raza)
+        c3.metric("ID", mascota.id[:8])
         
         st.divider()
+        c_vac, c_peso = st.columns(2)
+        with c_vac:
+            st.info("Vacunas")
+            st.dataframe(pd.DataFrame({'Vacunas': mascota.historial_medico['vacunas']}), use_container_width=True)
+        with c_peso:
+            st.info("Peso")
+            st.dataframe(pd.DataFrame(mascota.historial_medico['peso']), use_container_width=True)
 
-        st.write("#### Registros Técnicos")
-        col_vacuna, col_peso = st.columns(2)
-        with col_vacuna:
-            st.info("##### 💉 Vacunas")
-            df_vacunas = pd.DataFrame({'Vacunas Registradas': mascota.historial_medico['vacunas']})
-            st.dataframe(df_vacunas, use_container_width=True, hide_index=True)
-        with col_peso:
-            st.info("##### ⚖️ Peso (kg)")
-            df_peso = pd.DataFrame(mascota.historial_medico['peso'])
-            st.dataframe(df_peso, use_container_width=True, hide_index=True)
-            
-        st.write("#### Notas y Tratamientos")
-        col_obs, col_trat = st.columns(2)
-        with col_obs:
-            st.warning("##### 📝 Observaciones")
-            for obs in mascota.historial_medico['observaciones']:
-                 st.write(f"- {obs}")
-        with col_trat:
-            st.error("##### 💊 Tratamientos")
-            for trat in mascota.historial_medico['tratamientos']:
-                 st.write(f"- {trat}")
-
-    with tab2: # Formularios para Añadir Datos
-        st.subheader("➕ Añadir Registros al Historial")
-        
-        col_vac, col_peso = st.columns(2)
-        
-        with col_vac:
-            # Formulario para añadir vacunas
-            with st.form("form_vacuna", border=True):
-                st.write(" **💉 Registrar Nueva Vacuna**")
-                nombre_vacuna = st.text_input("Nombre de la Vacuna", key="vac_nombre")
-                fecha_vacuna = st.date_input("Fecha de Aplicación", key="vac_fecha", value=date.today())
-                vacuna_submit = st.form_submit_button("Guardar Vacuna", type="primary")
-                
-                if vacuna_submit:
-                    if nombre_vacuna:
-                        texto_registro = f"{fecha_vacuna.strftime('%d/%m/%Y')} - {nombre_vacuna}"
-                        mascota.historial_medico['vacunas'].append(texto_registro)
-                        st.success(f"Vacuna '{nombre_vacuna}' registrada exitosamente.")
-                        st.rerun() # Recargar para ver los cambios en la tabla
-                    else:
-                        st.error("Por favor escribe el nombre de la vacuna.")
+    with tab2: 
+        st.subheader("➕ Añadir Registros")
+        with st.form("form_vacuna"):
+            nom_vac = st.text_input("Nombre Vacuna")
+            fecha_vac = st.date_input("Fecha", value=date.today())
+            if st.form_submit_button("Guardar Vacuna"):
+                if nom_vac:
+                    mascota.historial_medico['vacunas'].append(f"{fecha_vac} - {nom_vac}")
+                    st.success("Guardado")
+                    st.rerun()

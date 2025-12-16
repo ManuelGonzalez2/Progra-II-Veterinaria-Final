@@ -1,16 +1,34 @@
-import sys
-import os
-# Ajuste de ruta para reconocer la carpeta src
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 import streamlit as st
 import pandas as pd
 from datetime import date
-# Importamos Utils para usar la función de formatear nombre y buscar mejor
-from src import Veterinaria, Utils 
+import sys
+import os
 
-# --- Configuración de la Página de Streamlit ---
-# Usamos un layout más amplio para la tabla de citas
+# -------------------------------------------------------------------------
+# BLOQUE DE CONFIGURACIÓN DE RUTAS (SOLUCIÓN DE IMPORTACIONES)
+# -------------------------------------------------------------------------
+# Obtenemos la ruta absoluta de la carpeta actual (streamlit/pages)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Subimos dos niveles para llegar a la raíz del proyecto
+root_path = os.path.abspath(os.path.join(current_dir, '..', '..'))
+
+# Añadimos la raíz al sistema si no está ya
+if root_path not in sys.path:
+    sys.path.append(root_path)
+
+# Importamos explícitamente desde src
+try:
+    from src.Veterinaria import Veterinaria
+    from src.Utils import Utils
+except ImportError as e:
+    st.error(f"Error crítico de importación: {e}. Verifica que src/Veterinaria.py y src/Utils.py existan.")
+    st.stop()
+
+# -------------------------------------------------------------------------
+# LÓGICA DE LA PÁGINA
+# -------------------------------------------------------------------------
+
+# Configuración de la Página de Streamlit
 st.set_page_config(page_title="Gestión de Citas", page_icon="📅", layout="wide")
 
 # Inicialización de la clase Veterinaria (Singleton)
@@ -25,15 +43,13 @@ if "login_correcto" not in st.session_state or not st.session_state["login_corre
 st.title("📅 Gestión de Citas")
 veterinaria = st.session_state["mi_clinica"]
 
-# --- 1. Formulario para Crear Cita (Mejoras estéticas con st.columns) ---
+# --- 1. Formulario para Crear Cita ---
 st.subheader("✍️ Programar Nueva Cita")
 
-# Usamos un contenedor 'info' para que el formulario tenga un ligero color de fondo
 with st.container(border=True): 
     with st.form("form_cita"):
         st.caption("Detalles del Dueño y el Paciente")
         
-        # Columnas para mejor distribución de los inputs
         col_dueño, col_mascota = st.columns(2)
         with col_dueño:
             nombre_dueño = st.text_input("Nombre Completo del Dueño", key="nombre_dueño_cita") 
@@ -42,12 +58,11 @@ with st.container(border=True):
         
         st.divider()
         st.caption("Detalles de la Cita")
-        col1, col2, col3 = st.columns([1.5, 1, 2]) # 3 Columnas
+        col1, col2, col3 = st.columns([1.5, 1, 2]) 
         
         with col1:
             fecha_cita = st.date_input("Fecha", value=date.today())
         with col2:
-            # Lista de horas comunes para facilitar la entrada de datos
             opciones_hora = [f"{h:02d}:00" for h in range(9, 20)] 
             hora_cita = st.selectbox("Hora", options=opciones_hora)
             
@@ -56,7 +71,6 @@ with st.container(border=True):
             
         motivo = st.text_area("Motivo de la Cita (Ej: Chequeo anual, Vacuna, Emergencia)", height=80)
         
-        # Botón con color primario para destacar la acción
         submitted = st.form_submit_button("✅ Programar Cita", type="primary")
         
         # --- Lógica de Búsqueda y Creación ---
@@ -80,15 +94,13 @@ with st.container(border=True):
                 )
                 
                 if mascota_encontrada:
-                    # 3. Creamos y registramos la cita (llama a la función que usa SQLite)
+                    # 3. Creamos y registramos la cita
                     if veterinaria.crear_cita(fecha_cita, hora_cita, motivo, veterinario_responsable, mascota_encontrada):
                         st.success(f"✅ Cita programada para **{mascota_encontrada.nombre}** (Dueño: {cliente_encontrado.nombre}) con {veterinario_responsable}.")
                     else:
                         st.error("❌ Error al guardar la cita en la base de datos.")
-
                 else:
                     st.error(f"❌ Error: Mascota **'{nombre_mascota}'** no registrada para el cliente {cliente_encontrado.nombre}.")
-
 
 # --- 2. Visualización de Citas Programadas ---
 st.write("---")
@@ -100,19 +112,18 @@ if veterinaria.citas:
         "Fecha": [c.fecha.strftime('%d/%m/%Y') for c in veterinaria.citas],
         "Hora": [c.hora for c in veterinaria.citas],
         "Mascota": [c.mascota.nombre for c in veterinaria.citas],
-        # Asumimos que c.mascota.cliente.nombre es accesible desde la lógica de carga de Veterinaria
         "Dueño": [c.mascota.cliente.nombre for c in veterinaria.citas], 
         "Veterinario": [c.veterinario for c in veterinaria.citas],
         "Motivo": [c.motivo for c in veterinaria.citas]
     }
     df = pd.DataFrame(datos)
     
-    # 2. Mostramos la tabla con un encabezado de texto más grande
+    # 2. Mostramos la tabla
     st.dataframe(
         df, 
         use_container_width=True, 
-        height=400, # Altura fija para la tabla
-        column_order=("Fecha", "Hora", "Mascota", "Dueño", "Veterinario", "Motivo") # Orden de las columnas
+        height=400, 
+        column_order=("Fecha", "Hora", "Mascota", "Dueño", "Veterinario", "Motivo")
     )
 else:
     st.info("ℹ️ No hay citas programadas actualmente.")

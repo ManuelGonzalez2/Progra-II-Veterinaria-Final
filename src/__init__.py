@@ -1,8 +1,4 @@
+# src/__init__.py
+
+# Solo exportamos la clase principal para que sea accesible desde fuera
 from .veterinaria import Veterinaria
-from .clientes import Cliente
-from .mascotas import Mascota
-from .citas import Cita
-from .utils import Utils
-from .db_connection import DatabaseConnection
-from .logging import AppLogger
-from .exceptions import ClienteNoEncontradoError, CitaError

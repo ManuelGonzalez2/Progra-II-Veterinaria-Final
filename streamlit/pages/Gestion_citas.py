@@ -1,116 +1,112 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import sys
-import os
-
-# -------------------------------------------------------------------------
-# CORRECCIÓN DEFINITIVA DE RUTAS
-# -------------------------------------------------------------------------
-# 1. Localizamos dónde está este archivo
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 2. Construimos la ruta DIRECTA a la carpeta 'src'
-# Subimos dos niveles (..) y entramos a 'src'
-path_to_src = os.path.abspath(os.path.join(current_dir, '..', '..', 'src'))
-
-# 3. Añadimos esa ruta específica al sistema
-if path_to_src not in sys.path:
-    sys.path.append(path_to_src)
-
-# 4. Importamos DIRECTAMENTE (sin poner 'src.')
-# Si tus archivos se llaman 'veterinaria.py' en minúscula, cambia esto a 'from veterinaria import Veterinaria'
-try:
-    from veterinaria import veterinaria
-    from utils import utils
-except ImportError as e:
-    st.error(f"Error crítico: {e}")
-    st.write("Ruta que Python está intentando leer:", path_to_src)
-    st.stop()
-
-# -------------------------------------------------------------------------
-# LÓGICA DE LA PÁGINA (Igual que antes)
-# -------------------------------------------------------------------------
+# Importamos nuestras funciones de base de datos
+# Asegúrate de que db_utils.py esté en la misma carpeta 'pages'
+from db_utils import run_query, read_query, create_tables
 
 st.set_page_config(page_title="Gestión de Citas", page_icon="📅", layout="wide")
 
-if "mi_clinica" not in st.session_state:
-    st.session_state["mi_clinica"] = Veterinaria()
+def app():
+    # Aseguramos que las tablas existan (por seguridad)
+    create_tables()
 
-if "login_correcto" not in st.session_state or not st.session_state["login_correcto"]:
-    st.warning("🔒 Debes iniciar sesión para acceder a la gestión de citas.")
-    st.stop()
+    st.title("📅 Gestión de Citas")
 
-st.title("📅 Gestión de Citas")
-veterinaria = st.session_state["mi_clinica"]
+    # --- CARGAR DATOS PARA LOS SELECTORES ---
+    # Necesitamos la lista de mascotas para que el usuario elija, no escriba
+    # Traemos ID, Nombre Mascota y Nombre Dueño
+    pacientes_db = read_query("SELECT id, nombre, propietario FROM pacientes")
+    
+    # Creamos un diccionario para el selectbox: "Toby (Dueño: Juan)" -> ID 1
+    # Esto ayuda a diferenciar si hay dos perros llamados "Toby"
+    opciones_pacientes = {}
+    if pacientes_db:
+        for p in pacientes_db:
+            etiqueta = f"{p[1]} (Dueño: {p[2]})" # Ejemplo: Rex (Dueño: Ana)
+            opciones_pacientes[etiqueta] = p[0] # Guardamos el ID asociado
 
-# --- Formulario para Crear Cita ---
-st.subheader("✍️ Programar Nueva Cita")
+    # --- FORMULARIO PARA CREAR CITA ---
+    st.subheader("✍️ Programar Nueva Cita")
 
-with st.container(border=True): 
-    with st.form("form_cita"):
-        st.caption("Detalles del Dueño y el Paciente")
-        
-        col_dueño, col_mascota = st.columns(2)
-        with col_dueño:
-            nombre_dueño = st.text_input("Nombre Completo del Dueño", key="nombre_dueño_cita") 
-        with col_mascota:
-            nombre_mascota = st.text_input("Nombre de la Mascota", key="mascota_cita")
-        
-        st.divider()
-        col1, col2, col3 = st.columns([1.5, 1, 2]) 
-        
-        with col1:
-            fecha_cita = st.date_input("Fecha", value=date.today())
-        with col2:
-            opciones_hora = [f"{h:02d}:00" for h in range(9, 20)] 
-            hora_cita = st.selectbox("Hora", options=opciones_hora)
-        with col3:
-            veterinario_responsable = st.selectbox("Veterinario Responsable", ["Dr. Rufino", "Dra. Ana", "Dr. Tomás"])
+    with st.container(border=True): 
+        with st.form("form_cita"):
             
-        motivo = st.text_area("Motivo", height=80)
-        submitted = st.form_submit_button("✅ Programar Cita", type="primary")
-        
-        if submitted:
-            cliente_encontrado = None
-            nombre_dueño_formateado = Utils.formatear_nombre(nombre_dueño)
+            col_mascota, col_vet = st.columns(2)
             
-            # Buscar Cliente
-            for c in veterinaria.clientes:
-                if Utils.formatear_nombre(c.nombre) == nombre_dueño_formateado:
-                    cliente_encontrado = c
-                    break
-
-            if not cliente_encontrado:
-                st.error("❌ Error: Cliente no encontrado.")
-            else:
-                # Buscar Mascota
-                nombre_mascota_formateado = Utils.formatear_nombre(nombre_mascota)
-                mascota_encontrada = next(
-                    (m for m in cliente_encontrado.mascotas if Utils.formatear_nombre(m.nombre) == nombre_mascota_formateado), None 
-                )
-                
-                if mascota_encontrada:
-                    if veterinaria.crear_cita(fecha_cita, hora_cita, motivo, veterinario_responsable, mascota_encontrada):
-                        st.success(f"✅ Cita programada para **{mascota_encontrada.nombre}**.")
-                    else:
-                        st.error("❌ Error al guardar.")
+            with col_mascota:
+                if not opciones_pacientes:
+                    st.warning("⚠️ No hay pacientes registrados. Ve a 'Registrar Cliente' primero.")
+                    paciente_seleccionado_nombre = None
                 else:
-                    st.error(f"❌ Mascota no encontrada para este cliente.")
+                    paciente_seleccionado_nombre = st.selectbox(
+                        "Seleccionar Paciente", 
+                        options=list(opciones_pacientes.keys())
+                    )
 
-# --- Visualización ---
-st.write("---")
-st.subheader("📋 Citas Programadas")
+            with col_vet:
+                veterinario_responsable = st.selectbox(
+                    "Veterinario Responsable", 
+                    ["Dr. Rufino", "Dra. Ana", "Dr. Tomás"]
+                )
+            
+            st.divider()
+            
+            col_fecha, col_hora = st.columns(2)
+            
+            with col_fecha:
+                fecha_cita = st.date_input("Fecha", value=date.today())
+            with col_hora:
+                # Generamos horas de 09:00 a 20:00
+                opciones_hora = [f"{h:02d}:00" for h in range(9, 21)] 
+                hora_cita = st.selectbox("Hora", options=opciones_hora)
+                
+            motivo = st.text_area("Motivo de la consulta", height=80)
+            
+            submitted = st.form_submit_button("✅ Programar Cita", type="primary")
+            
+            if submitted:
+                if paciente_seleccionado_nombre:
+                    # Recuperamos el ID real usando el nombre seleccionado
+                    paciente_id = opciones_pacientes[paciente_seleccionado_nombre]
+                    
+                    # Guardamos en SQLite
+                    query = """
+                        INSERT INTO citas (paciente_id, fecha, hora, motivo, veterinario) 
+                        VALUES (?, ?, ?, ?, ?)
+                    """
+                    params = (paciente_id, str(fecha_cita), str(hora_cita), motivo, veterinario_responsable)
+                    
+                    run_query(query, params)
+                    st.success(f"✅ Cita programada para **{paciente_seleccionado_nombre}** el {fecha_cita} a las {hora_cita}.")
+                else:
+                    st.error("❌ No has seleccionado ningún paciente válido.")
 
-if veterinaria.citas:
-    datos = {
-        "Fecha": [c.fecha.strftime('%d/%m/%Y') for c in veterinaria.citas],
-        "Hora": [c.hora for c in veterinaria.citas],
-        "Mascota": [c.mascota.nombre for c in veterinaria.citas],
-        "Dueño": [c.mascota.cliente.nombre for c in veterinaria.citas], 
-        "Veterinario": [c.veterinario for c in veterinaria.citas],
-        "Motivo": [c.motivo for c in veterinaria.citas]
-    }
-    st.dataframe(pd.DataFrame(datos), use_container_width=True, height=400)
-else:
-    st.info("ℹ️ No hay citas programadas actualmente.")
+    # --- VISUALIZACIÓN DE CITAS ---
+    st.write("---")
+    st.subheader("📋 Próximas Citas")
+
+    # Hacemos un JOIN para traer el nombre del paciente en vez de solo su ID número
+    query_view = """
+        SELECT 
+            citas.fecha, 
+            citas.hora, 
+            pacientes.nombre, 
+            pacientes.propietario, 
+            citas.veterinario, 
+            citas.motivo 
+        FROM citas
+        JOIN pacientes ON citas.paciente_id = pacientes.id
+        ORDER BY citas.fecha DESC, citas.hora ASC
+    """
+    datos_citas = read_query(query_view)
+
+    if datos_citas:
+        df = pd.DataFrame(datos_citas, columns=["Fecha", "Hora", "Mascota", "Dueño", "Veterinario", "Motivo"])
+        st.dataframe(df, use_container_width=True, height=400)
+    else:
+        st.info("ℹ️ No hay citas programadas actualmente en la base de datos.")
+
+# Esto permite que funcione si ejecutas la página directamente o si la importas
+if __name__ == "__main__":
+    app()

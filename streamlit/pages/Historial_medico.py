@@ -1,114 +1,99 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import sys
-import os
-
-# -------------------------------------------------------------------------
-# CORRECCIÓN DEFINITIVA DE RUTAS
-# -------------------------------------------------------------------------
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Ruta directa a la carpeta 'src'
-path_to_src = os.path.abspath(os.path.join(current_dir, '..', '..', 'src'))
-
-if path_to_src not in sys.path:
-    sys.path.append(path_to_src)
-
-try:
-    # IMPORTACIÓN DIRECTA (Asegúrate de que el archivo es Veterinaria.py con mayúscula)
-    from veterinaria import veterinaria
-    from utils import utils
-except ImportError as e:
-    st.error(f"Error crítico: {e}")
-    st.write("Ruta buscada:", path_to_src)
-    st.stop()
-
-# -------------------------------------------------------------------------
-# LÓGICA DE LA PÁGINA
-# -------------------------------------------------------------------------
+# Importamos las funciones de nuestra base de datos
+from db_utils import run_query, read_query
 
 st.set_page_config(page_title="Historial Médico", page_icon="🩺", layout="wide")
 
-if "mi_clinica" not in st.session_state:
-    st.session_state["mi_clinica"] = Veterinaria()
+def app():
+    st.title("🩺 Historial Médico y Tratamientos")
 
-if "login_correcto" not in st.session_state or not st.session_state["login_correcto"]:
-    st.warning("🔒 Debes iniciar sesión para acceder al historial.")
-    st.stop()
-
-st.title("🩺 Historial Médico y Tratamientos")
-veterinaria = st.session_state["mi_clinica"]
-
-# --- Búsqueda ---
-st.subheader("🔍 Buscar Paciente")
-
-with st.container(border=True): 
-    col_dueño_input, col_mascota_input, col_btn = st.columns([2, 2, 1])
+    # --- 1. SELECCIÓN DE PACIENTE (Buscador Inteligente) ---
+    # Traemos todos los pacientes para el buscador
+    # Recuperamos ID, Nombre, Propietario y Raza
+    pacientes_db = read_query("SELECT id, nombre, propietario, raza FROM pacientes")
     
-    with col_dueño_input:
-        nombre_dueño = st.text_input("Nombre del Dueño", key="hist_dueño") 
-    with col_mascota_input:
-        nombre_mascota = st.text_input("Nombre de la Mascota", key="hist_mascota")
-    with col_btn:
-        st.write(" ") 
-        if st.button("Buscar Mascota", type="primary"):
-            cliente_encontrado = None
-            
-            nombre_dueño_formateado = Utils.formatear_nombre(nombre_dueño)
-            for c in veterinaria.clientes:
-                if Utils.formatear_nombre(c.nombre) == nombre_dueño_formateado:
-                    cliente_encontrado = c
-                    break
+    if not pacientes_db:
+        st.warning("⚠️ No hay pacientes registrados. Ve a 'Registrar Cliente' para empezar.")
+        st.stop()
 
-            mascota_encontrada = None
-            if cliente_encontrado:
-                nombre_mascota_formateado = Utils.formatear_nombre(nombre_mascota)
-                for m in cliente_encontrado.mascotas:
-                    if Utils.formatear_nombre(m.nombre) == nombre_mascota_formateado:
-                        mascota_encontrada = m
-                        break
+    # Creamos el diccionario para el desplegable
+    # Clave: "Rex (Dueño: Ana) - Pastor Alemán" -> Valor: ID del paciente
+    dict_pacientes = {f"{p[1]} (Dueño: {p[2]}) - {p[3]}": p[0] for p in pacientes_db}
 
-            if mascota_encontrada:
-                st.session_state["cliente_actual_historial"] = cliente_encontrado 
-                st.session_state["mascota_actual"] = mascota_encontrada
-                st.success(f"✅ Mascota **{mascota_encontrada.nombre}** encontrada.")
-            else:
-                st.session_state["mascota_actual"] = None
-                st.error("❌ Mascota o Dueño no encontrados.")
-
-# --- Gestión del Historial ---
-if "mascota_actual" in st.session_state and st.session_state["mascota_actual"]:
-    mascota = st.session_state["mascota_actual"]
-    cliente = st.session_state["cliente_actual_historial"]
-
-    st.write("---")
-    st.subheader(f"Ficha Médica de {mascota.nombre}")
+    # Selector en la barra principal o arriba
+    st.subheader("🔍 Seleccionar Paciente")
+    nombre_seleccionado = st.selectbox("Buscar por nombre:", list(dict_pacientes.keys()))
     
-    tab1, tab2 = st.tabs(["📋 Historial Básico", "➕ Añadir Datos"])
+    # Obtenemos el ID real del paciente seleccionado
+    id_paciente = dict_pacientes[nombre_seleccionado]
+    
+    # Recuperamos datos "bonitos" para mostrar (Nombre, Raza, Dueño)
+    # Volvemos a buscar info específica de este ID para asegurarnos
+    info_paciente = read_query("SELECT nombre, raza, propietario FROM pacientes WHERE id = ?", (id_paciente,))
+    nombre_p, raza_p, dueno_p = info_paciente[0]
 
-    with tab1: 
-        st.write("#### Datos del Paciente")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Dueño", cliente.nombre)
-        c2.metric("Raza", mascota.raza)
-        c3.metric("ID", mascota.id[:8])
+    # --- 2. MOSTRAR DATOS BÁSICOS ---
+    st.divider()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🐶 Paciente", nombre_p)
+    col2.metric("👤 Propietario", dueno_p)
+    col3.metric("rga Raza", raza_p)
+    st.divider()
+
+    # --- 3. PESTAÑAS DE GESTIÓN ---
+    tab_ver, tab_anadir = st.tabs(["📋 Ver Historial Completo", "➕ Añadir Nueva Visita/Vacuna"])
+
+    # --- TAB 1: VER HISTORIAL ---
+    with tab_ver:
+        # Leemos todo el historial de ESTE paciente ordenado por fecha (el más reciente arriba)
+        query_historial = """
+            SELECT fecha, descripcion, tratamiento 
+            FROM historial 
+            WHERE paciente_id = ? 
+            ORDER BY fecha DESC
+        """
+        datos_historial = read_query(query_historial, (id_paciente,))
+
+        if datos_historial:
+            df = pd.DataFrame(datos_historial, columns=["Fecha", "Detalles / Diagnóstico", "Tratamiento / Notas"])
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info(f"El historial de {nombre_p} está vacío.")
+
+    # --- TAB 2: AÑADIR NUEVA ENTRADA ---
+    with tab_anadir:
+        st.write(f"Agregando entrada al historial de **{nombre_p}**")
         
-        st.divider()
-        c_vac, c_peso = st.columns(2)
-        with c_vac:
-            st.info("Vacunas")
-            st.dataframe(pd.DataFrame({'Vacunas': mascota.historial_medico['vacunas']}), use_container_width=True)
-        with c_peso:
-            st.info("Peso")
-            st.dataframe(pd.DataFrame(mascota.historial_medico['peso']), use_container_width=True)
+        with st.form("form_historial"):
+            col_fecha, col_tipo = st.columns(2)
+            
+            with col_fecha:
+                fecha = st.date_input("Fecha de visita", value=date.today())
+            
+            with col_tipo:
+                tipo_evento = st.selectbox("Tipo de Evento", ["Consulta General", "Vacunación", "Control de Peso", "Cirugía", "Urgencia"])
 
-    with tab2: 
-        st.subheader("➕ Añadir Registros")
-        with st.form("form_vacuna"):
-            nom_vac = st.text_input("Nombre Vacuna")
-            fecha_vac = st.date_input("Fecha", value=date.today())
-            if st.form_submit_button("Guardar Vacuna"):
-                if nom_vac:
-                    mascota.historial_medico['vacunas'].append(f"{fecha_vac} - {nom_vac}")
-                    st.success("Guardado")
-                    st.rerun()
+            # Inputs de texto
+            descripcion_input = st.text_area("Diagnóstico / Descripción")
+            tratamiento_input = st.text_input("Tratamiento recetado / Vacuna aplicada")
+
+            submitted = st.form_submit_button("💾 Guardar en Historial", type="primary")
+
+            if submitted:
+                # Concatenamos el TIPO con la descripción para que se vea claro en la tabla
+                # Ej: "[VACUNACIÓN] Rabia anual"
+                descripcion_final = f"[{tipo_evento.upper()}] {descripcion_input}"
+                
+                query_insert = """
+                    INSERT INTO historial (paciente_id, fecha, descripcion, tratamiento) 
+                    VALUES (?, ?, ?, ?)
+                """
+                run_query(query_insert, (id_paciente, str(fecha), descripcion_final, tratamiento_input))
+                
+                st.success("✅ Entrada guardada correctamente.")
+                st.rerun() # Recargamos para que salga en la pestaña de "Ver Historial" al momento
+
+if __name__ == "__main__":
+    app()

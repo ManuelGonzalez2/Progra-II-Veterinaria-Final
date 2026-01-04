@@ -20,7 +20,6 @@ class Cita:
         # Genera un ID único basado en fecha, hora y el ID de la mascota
         self.id_cita = f"{fecha}_{hora}_{self.id_mascota}"
 
-# --- FUNCIÓN DE BBDD (FUERA DE LA CLASE, SIN TABULACIÓN A LA IZQUIERDA) ---
 
 def registrar_cita_db(nueva_cita):
     """Inserta una nueva cita en la tabla 'citas' de SQLite."""

@@ -1,8 +1,27 @@
+import sys
+import os
+
+# 1. Calculamos las rutas exactas
+# La carpeta donde está db_utils (la carpeta 'streamlit')
+current_dir = os.path.dirname(__file__)
+streamlit_folder = os.path.abspath(os.path.join(current_dir, ".."))
+# La raíz del proyecto (donde está 'src')
+root_project = os.path.abspath(os.path.join(current_dir, "../.."))
+
+# 2. Las añadimos al sistema si no están ya
+if streamlit_folder not in sys.path:
+    sys.path.insert(0, streamlit_folder)
+if root_project not in sys.path:
+    sys.path.insert(0, root_project)
+
+# 3. IMPORTS (Ahora sí, sin el prefijo 'streamlit.')
 import streamlit as st
 from datetime import date
-import re # Para validar el email
-# Importamos nuestras herramientas de base de datos
-from db_utils import run_query, create_tables
+import re
+
+# Importamos directamente 'db_utils' (porque ya hemos añadido su carpeta al GPS)
+from db_utils import run_query, create_tables 
+# Importamos de 'src'
 from src.utils import Utils
 
 st.set_page_config(page_title="Registrar Cliente y Mascota", page_icon="👤", layout="wide")

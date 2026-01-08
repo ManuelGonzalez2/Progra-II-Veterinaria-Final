@@ -8,8 +8,7 @@ def app():
     st.title("🐾 Listado de Pacientes")
     st.caption("Inventario completo de mascotas registradas en la base de datos.")
 
-    # --- 1. Recuperar Datos de SQLite ---
-    # Seleccionamos todo lo que nos interesa mostrar
+
     query = """
         SELECT nombre, especie, raza, fecha_nacimiento, propietario, telefono, email 
         FROM pacientes
@@ -17,7 +16,7 @@ def app():
     datos = read_query(query)
 
     if not datos:
-        st.info("ℹ️ No hay mascotas registradas todavía. Ve a 'Registrar Cliente' para añadir la primera.")
+        st.info(" No hay mascotas registradas todavía. Ve a 'Registrar Cliente' para añadir la primera.")
         return
 
     # Convertimos los datos crudos a un DataFrame de Pandas
@@ -31,17 +30,17 @@ def app():
         "Email"
     ])
 
-    # --- 2. Filtros de Búsqueda ---
+    # Filtros de Búsqueda 
     st.subheader("🔍 Buscador y Filtros")
     
     col_search, col_filter = st.columns([3, 1])
     
     with col_search:
-        # Buscador General (busca texto en cualquier columna)
+        # Busca texto en cualquier columna
         search_term = st.text_input("Buscar por Nombre, Raza o Dueño", placeholder="Ej: Toby, Pastor Alemán, Juan...", key="search_mascota")
         
         if search_term:
-            # Filtro "Mágico": Convierte toda la fila a texto y busca la palabra clave
+            # Conviertimos toda la fila a texto y buscamos la palabra clave
             mask = df.apply(lambda row: search_term.lower() in row.astype(str).str.lower().to_string(), axis=1)
             df = df[mask]
     
@@ -53,7 +52,7 @@ def app():
         if selected_especie != 'Todas':
             df = df[df['Especie'] == selected_especie]
 
-    # --- 3. Métricas y Tabla Final ---
+
     st.divider()
     
     # Métrica de resumen

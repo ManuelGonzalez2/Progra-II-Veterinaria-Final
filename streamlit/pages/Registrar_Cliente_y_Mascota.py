@@ -3,6 +3,7 @@ from datetime import date
 import re # Para validar el email
 # Importamos nuestras herramientas de base de datos
 from db_utils import run_query, create_tables
+from src.utils import Utils
 
 st.set_page_config(page_title="Registrar Cliente y Mascota", page_icon="👤", layout="wide")
 
@@ -13,7 +14,6 @@ def app():
     st.title("👤 Registrar Cliente y Mascota")
     st.caption("Introduce los datos para crear un nuevo expediente en la base de datos.")
 
-    # --- FORMULARIO DE REGISTRO ---
     with st.form("registro_completo", border=True):
         st.subheader("Datos de Registro")
         
@@ -38,19 +38,18 @@ def app():
         submitted = st.form_submit_button("✅ Registrar en Base de Datos", type="primary")
 
         if submitted:
-            # --- Validaciones Básicas ---
+            #Validaciones
             errores = []
             if not nombre_propietario: errores.append("Falta el nombre del dueño.")
             if not nombre_mascota: errores.append("Falta el nombre de la mascota.")
-            # Validación sencilla de email (debe tener @ y .)
-            if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            # Validación de mail con utils
+            if email and not Utils.validar_email(email): 
                 errores.append("El formato del email no es válido.")
 
             if errores:
                 for e in errores:
-                    st.error(f"❌ {e}")
+                    st.error(f"ERROR {e}")
             else:
-                # --- GUARDAR EN SQLITE ---
                 try:
                     query = """
                         INSERT INTO pacientes 

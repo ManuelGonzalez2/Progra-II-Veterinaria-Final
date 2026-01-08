@@ -1,18 +1,18 @@
 import sqlite3
-import os
+import os #Para que se vaya guardando todo ( operating System)
 
 # 1. Definimos el nombre del archivo de la BBDD
 DB_NAME = 'veterinaria.db'
 
 def setup_database():
-    """
-    Establece la conexión a SQLite y asegura que las tablas
-    necesarias (clientes, mascotas, citas) existan.
-    """
+    
+    #Establece la conexión a SQLite y asegura que las tablas
+   # necesarias (clientes, mascotas, citas) existan.
+    
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # 2. Tabla de Clientes
+    # Tabla de Clientes
     # id_cliente es la CLAVE PRIMARIA
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
@@ -24,9 +24,9 @@ def setup_database():
         )
     """)
 
-    # 3. Tabla de Mascotas
+    # Tabla de Mascotas
     # id_mascota es la CLAVE PRIMARIA
-    # cliente_id es la CLAVE FORÁNEA (relación 1-a-Muchos)
+    # cliente_id es la CLAVE FORÁNEA
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mascotas (
             id_mascota TEXT PRIMARY KEY,
@@ -40,7 +40,7 @@ def setup_database():
         )
     """)
     
-    # 4. Tabla de Citas
+    # Tabla de Citas
     # id_cita es la CLAVE PRIMARIA
     # id_mascota es la CLAVE FORÁNEA
     cursor.execute("""
@@ -56,7 +56,6 @@ def setup_database():
         )
     """)
     
-    # NOTA: Si quieres guardar el Historial Médico, necesitarías otra tabla aquí.
     
     conn.commit()
     conn.close()
@@ -64,7 +63,7 @@ def setup_database():
     return f"Conexión a '{DB_NAME}' establecida y tablas aseguradas."
 
 def get_connection():
-    """Devuelve una nueva conexión a la base de datos para usar en CRUD."""
+    #Devuelve una nueva conexión a la base de datos para usar en CRUD.
     return sqlite3.connect(DB_NAME)
 
 # Llamada inicial para configurar la BBDD

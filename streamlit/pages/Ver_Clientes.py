@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+# Importamos nuestras herramientas de base de datos
 from db_utils import read_query, run_query
 
 st.set_page_config(page_title="Ver Clientes", page_icon="📋", layout="wide")
@@ -8,7 +9,8 @@ def app():
     st.title("🧑‍💻 Clientes Registrados")
     st.caption("Listado de dueños únicos (agrupados por email).")
 
-    # --- 1. Mensajes de Estado (Feedback visual) ---
+    #Permite que la aplicación te confirme que algo ha salido bien (o mal) justo después de que la 
+    #página se haya reiniciado. Lo lees una vez y se autodestruye para no molestar.
     if "mensaje_status" in st.session_state:
         if st.session_state["mensaje_status"]["tipo"] == "success":
             st.success(st.session_state["mensaje_status"]["texto"])
@@ -17,12 +19,11 @@ def app():
         # Borramos el mensaje para que no salga eternamente
         del st.session_state["mensaje_status"]
 
-    # --- 2. Tabla de Clientes (Consulta SQL Inteligente) ---
+
     st.subheader("BBDD de Dueños Activos")
 
-    # Esta consulta hace magia:
-    # 1. Agrupa por email (GROUP BY email) para que cada dueño salga solo una vez.
-    # 2. Cuenta cuántas filas tiene ese email (COUNT(id)) para saber cuántas mascotas tiene.
+    # Primero agrupamos por email (GROUP BY email) para que cada dueño salga solo una vez.
+    # Despues contamos cuántas filas tiene ese email (COUNT(id)) para saber cuántas mascotas tiene.
     query = """
         SELECT 
             propietario, 
@@ -35,7 +36,7 @@ def app():
     datos = read_query(query)
 
     if not datos:
-        st.info("ℹ️ Aún no hay clientes registrados en la base de datos.")
+        st.info(" Aún no hay clientes registrados en la base de datos.")
     else:
         # Creamos el DataFrame
         df = pd.DataFrame(datos, columns=["Nombre Dueño", "Teléfono", "Email", "Mascotas Registradas"])
@@ -48,7 +49,7 @@ def app():
 
     st.divider()
 
-    # --- 3. Dar de Baja un Cliente ---
+    # Dar de Baja un Cliente 
     st.subheader("❌ Dar de Baja un Cliente")
     st.warning("⚠️ CUIDADO: Esta acción borrará al cliente, a TODAS sus mascotas y sus citas asociadas.")
 
@@ -66,7 +67,7 @@ def app():
         
         if confirm_button:
             if email_eliminar:
-                # --- LÓGICA DE BORRADO EN CASCADA ---
+
                 try:
                     # 1. Primero averiguamos los IDs de las mascotas de este dueño
                     mascotas = read_query("SELECT id FROM pacientes WHERE email = ?", (email_eliminar,))
@@ -77,9 +78,7 @@ def app():
                         ids_str = ', '.join(map(str, ids_mascotas))
 
                         # 2. Borramos Citas asociadas a esas mascotas
-                        # NOTA: En SQLite simple no podemos pasar listas directas fácilmente, 
-                        # así que lo hacemos en un bucle o una query dinámica. 
-                        # Por seguridad y simplicidad didáctica, borraremos por ID uno a uno:
+
                         for mid in ids_mascotas:
                             run_query("DELETE FROM citas WHERE paciente_id = ?", (mid,))
                             run_query("DELETE FROM historial WHERE paciente_id = ?", (mid,))

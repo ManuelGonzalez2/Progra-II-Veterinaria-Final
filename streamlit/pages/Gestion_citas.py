@@ -2,20 +2,17 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 # Importamos nuestras funciones de base de datos
-# Asegúrate de que db_utils.py esté en la misma carpeta 'pages'
 from db_utils import run_query, read_query, create_tables
 
 st.set_page_config(page_title="Gestión de Citas", page_icon="📅", layout="wide")
 
 def app():
-    # Aseguramos que las tablas existan (por seguridad)
+    # Aseguramos que las tablas existan 
     create_tables()
 
     st.title("📅 Gestión de Citas")
 
-    # --- CARGAR DATOS PARA LOS SELECTORES ---
     # Necesitamos la lista de mascotas para que el usuario elija, no escriba
-    # Traemos ID, Nombre Mascota y Nombre Dueño
     pacientes_db = read_query("SELECT id, nombre, propietario FROM pacientes")
     
     # Creamos un diccionario para el selectbox: "Toby (Dueño: Juan)" -> ID 1
@@ -26,7 +23,6 @@ def app():
             etiqueta = f"{p[1]} (Dueño: {p[2]})" # Ejemplo: Rex (Dueño: Ana)
             opciones_pacientes[etiqueta] = p[0] # Guardamos el ID asociado
 
-    # --- FORMULARIO PARA CREAR CITA ---
     st.subheader("✍️ Programar Nueva Cita")
 
     with st.container(border=True): 
@@ -36,7 +32,7 @@ def app():
             
             with col_mascota:
                 if not opciones_pacientes:
-                    st.warning("⚠️ No hay pacientes registrados. Ve a 'Registrar Cliente' primero.")
+                    st.warning(" No hay pacientes registrados. Ve a 'Registrar Cliente' primero.")
                     paciente_seleccionado_nombre = None
                 else:
                     paciente_seleccionado_nombre = st.selectbox(
@@ -105,7 +101,7 @@ def app():
         df = pd.DataFrame(datos_citas, columns=["Fecha", "Hora", "Mascota", "Dueño", "Veterinario", "Motivo"])
         st.dataframe(df, use_container_width=True, height=400)
     else:
-        st.info("ℹ️ No hay citas programadas actualmente en la base de datos.")
+        st.info(" No hay citas programadas actualmente en la base de datos.")
 
 # Esto permite que funcione si ejecutas la página directamente o si la importas
 if __name__ == "__main__":

@@ -1,33 +1,30 @@
 import streamlit as st
 
-# Configuración básica de la página
+
 st.set_page_config(page_title="Curae Veterinaria", page_icon="🏥")
 
 st.title("Curae Veterinaria - Inicio de Sesión")
 
-# --- GESTIÓN DE ESTADO (SESSION STATE) ---
-# Ya NO necesitamos inicializar la clase Veterinaria aquí.
-# La base de datos se encarga de guardar los datos sola.
-# Solo necesitamos saber si el usuario se ha logueado o no.
+
 
 if "login_correcto" not in st.session_state:
     st.session_state["login_correcto"] = False
 
-# --- LÓGICA DE LOGIN ---
+#LÓGICA DE LOGIN 
 
 if st.session_state["login_correcto"]:
-    # Si ya está logueado, le damos la bienvenida
-    st.success("✅ ¡Bienvenido al Sistema de Gestión Veterinaria!")
+    
+    st.success(" ¡Bienvenido al Sistema de Gestión Veterinaria!")
     
     st.write("### 👈 Utiliza el menú lateral para navegar.")
     
     st.info("""
     **Módulos disponibles:**
-    * 👤 **Registrar:** Crea nuevos clientes y sus mascotas.
-    * 🐾 **Pacientes:** Ver listado y buscar mascotas.
-    * 📋 **Clientes:** Gestión de dueños.
     * 📅 **Citas:** Calendario y programación.
     * 🩺 **Historial:** Fichas médicas y tratamientos.
+    * 👤 **Registrar:** Crea nuevos clientes y sus mascotas.
+    * 📋 **Clientes:** Gestión de dueños.
+    * 🐾 **Pacientes:** Ver listado y buscar mascotas.
     """)
     
     st.divider()

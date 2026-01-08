@@ -1,6 +1,4 @@
 from datetime import date
-# Nota: Si Mascota da problemas de importación circular, usa un string o import local.
-# Pero por ahora lo dejamos así si no falla.
 from .db_connection import get_connection
 
 class Cita:
@@ -22,22 +20,19 @@ class Cita:
 
 
 def registrar_cita_db(nueva_cita):
-    """Inserta una nueva cita en la tabla 'citas' de SQLite."""
+    #Inserta una nueva cita en la tabla 'citas' de SQLite.
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
-        cursor.execute("""
-            INSERT INTO citas (id_cita, fecha, hora, motivo, veterinario, id_mascota)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
+        cursor.execute(
             nueva_cita.id_cita, 
             str(nueva_cita.fecha),
             nueva_cita.hora, 
             nueva_cita.motivo, 
             nueva_cita.veterinario, 
             nueva_cita.id_mascota
-        ))
+        )
         conn.commit()
         return True
     except Exception as e:

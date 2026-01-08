@@ -1,4 +1,4 @@
-# db_utils.py (Versión Mejorada 2.0)
+
 import sqlite3
 
 DB_NAME = "clinica_vet.db"
@@ -11,7 +11,7 @@ def create_tables():
     conn = get_connection()
     c = conn.cursor()
     
-    # Tabla Pacientes (Ahora con datos de contacto y nacimiento)
+    # Tabla Pacientes
     c.execute('''
         CREATE TABLE IF NOT EXISTS pacientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +25,7 @@ def create_tables():
         )
     ''')
 
-    # Tabla Citas (Igual que antes + veterinario)
+    # Tabla Citas 
     c.execute('''
         CREATE TABLE IF NOT EXISTS citas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +38,7 @@ def create_tables():
         )
     ''')
 
-    # Tabla Historial (Igual que antes)
+    # Tabla Historial 
     c.execute('''
         CREATE TABLE IF NOT EXISTS historial (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,13 +53,15 @@ def create_tables():
     conn.commit()
     conn.close()
 
-def run_query(query, params=()):
+#Nos sirve para cuando queramos hacer cambios en la bbdd, sin esto tendriamos que llamar a la bbdd todo el rato cada vez que queramos cambiar algo
+def run_query(query, params=()): 
     conn = get_connection()
     c = conn.cursor()
     c.execute(query, params)
     conn.commit()
     conn.close()
 
+#Nos sirve para cuando queremos mirar y sacar informacion de la bbdd
 def read_query(query, params=()):
     conn = get_connection()
     c = conn.cursor()

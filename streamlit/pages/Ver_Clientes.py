@@ -5,6 +5,12 @@ from db_utils import read_query, run_query
 
 st.set_page_config(page_title="Ver Clientes", page_icon="📋", layout="wide")
 
+# Verificar si el usuario ha iniciado sesión
+if "login_correcto" not in st.session_state or not st.session_state["login_correcto"]:
+    st.warning("⚠️ Por favor, inicia sesión en la página de Inicio (Home) para acceder a este módulo.")
+    st.info("Haz clic en 'Home' en el menú lateral.")
+    st.stop() # Esto detiene la ejecución del resto de la página
+
 def app():
     st.title("🧑‍💻 Clientes Registrados")
     st.caption("Listado de dueños únicos (agrupados por email).")
